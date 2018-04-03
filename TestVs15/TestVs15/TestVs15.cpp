@@ -6,6 +6,7 @@
 #include <functional>
 #include <vector>
 #include <future>
+#include <list>
 
 using namespace std;
 
@@ -96,6 +97,36 @@ void PrintPromise()
 	cout << "promise value: " << res << endl;
 }
 
+//quick-sort using async
+template<typename T>
+std::list<T> parallel_quick_sort(std::list<T> input)
+{
+	if (input.empty())
+	{
+		return input;
+	}
+	std::list<T> result;
+	result.splice(result.begin(), input, input.begin());  // splice , move input objects into result
+	T const& pivot = *result.begin();
+
+	auto divide_point = std::partition(input.begin(), input.end(),  // std partition
+		[&](T const& t) {return t < pivot; });
+
+	std::list<T> lower_part;
+	lower_part.splice(lower_part.end(), input, input.begin(),
+		divide_point);
+
+	std::future<std::list<T> > new_lower(  
+		std::async(&parallel_quick_sort<T>, std::move(lower_part)));
+
+	auto new_higher(
+		parallel_quick_sort(std::move(input))); 
+
+	result.splice(result.end(), new_higher); 
+	result.splice(result.begin(), new_lower.get()); 
+	return result;
+}
+
 int main()
 {
 	int i;
@@ -132,11 +163,9 @@ int main()
 
 	thread th1(PrintPromise);
 	prom.set_value(100);
-
-
-
-
 	th1.join();
+
+	std::list<int> sortList{5,7,3,4,1,9,2,8};
 
 	std::cin >> i;
     return 0;
